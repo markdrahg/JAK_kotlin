@@ -26,6 +26,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var startBtn: Button
     private lateinit var tts: TextToSpeech
     private lateinit var statusText: TextView
+    private lateinit var commandManager: CommandManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,6 +43,9 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        // Initialize CommandManager
+        commandManager = CommandManager(this, tts, statusText)
+
         // Initialize SpeechRecognizer
         speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this)
         speechRecognizer.setRecognitionListener(object : RecognitionListener {
@@ -51,21 +55,8 @@ class MainActivity : AppCompatActivity() {
                 val spokenText = matches?.get(0) ?: ""
                 Log.d("Jak", "Heard: $spokenText")
 
-                val command = spokenText.lowercase()
-
-                when {
-                    command.contains("turn on") && command.contains("flash") -> {
-                        turnFlashlight(true)
-                        speak("Flashlight turned on")
-                    }
-                    command.contains("turn off") && command.contains("flash") -> {
-                        turnFlashlight(false)
-                        speak("Flashlight turned off")
-                    }
-                    else -> {
-                        speak("Sorry, I didn't understand")
-                    }
-                }
+                // Delegate command execution to CommandManager
+                commandManager.execute(spokenText)
 
                 startBtn.text = "Start Listening"
             }
@@ -111,7 +102,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun startListening() {
         startBtn.text = "Listening..."
-        speak("Listening")
 
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(
@@ -156,33 +146,6 @@ class MainActivity : AppCompatActivity() {
         ) {
             startListening()
         }
-    }
-
-    private fun turnFlashlight(on: Boolean) {
-        val hasFlash = packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_FLASH)
-        if (!hasFlash) {
-            speak("This device does not support flashlight")
-            statusText.text = "No flashlight available"
-            return
-        }
-
-        val cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
-
-        try {
-            val cameraId = cameraManager.cameraIdList.firstOrNull() ?: return
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                cameraManager.setTorchMode(cameraId, on)
-                statusText.text = if (on) "Flashlight ON" else "Flashlight OFF"
-            }
-        } catch (e: Exception) {
-            Toast.makeText(this, "Flashlight error", Toast.LENGTH_SHORT).show()
-            Log.e("Jak", "Flashlight error", e)
-            statusText.text = "Flashlight error"
-        }
-    }
-
-    private fun speak(text: String) {
-        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, null)
     }
 
     override fun onDestroy() {
