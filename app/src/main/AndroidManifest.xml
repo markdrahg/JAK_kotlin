@@ -32,6 +32,10 @@
         android:name="android.permission.BLUETOOTH_CONNECT"
         android:required="false" />
 
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+
+
     <!-- ===== APPLICATION ===== -->
     <application
         android:allowBackup="true"
@@ -54,6 +58,12 @@
             </intent-filter>
 
         </activity>
+
+        <service
+            android:name=".VoiceService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
+
 
     </application>
 

@@ -1,123 +1,51 @@
+
+
 package com.mark.jak
 
 import android.Manifest
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.hardware.camera2.CameraManager
 import android.os.Build
 import android.os.Bundle
-import android.speech.RecognitionListener
-import android.speech.RecognizerIntent
-import android.speech.SpeechRecognizer
-import android.speech.tts.TextToSpeech
-import android.util.Log
 import android.widget.Button
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var speechRecognizer: SpeechRecognizer
     private lateinit var startBtn: Button
-    private lateinit var tts: TextToSpeech
     private lateinit var statusText: TextView
-    private lateinit var commandManager: CommandManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Initialize UI elements after layout is set
         statusText = findViewById(R.id.statusText)
         startBtn = findViewById(R.id.startListeningBtn)
 
-        // Initialize Text-to-Speech
-        tts = TextToSpeech(this) {
-            if (it == TextToSpeech.SUCCESS) {
-                tts.language = Locale.US
-            }
-        }
-
-        // Initialize CommandManager
-        commandManager = CommandManager(this, tts, statusText)
-
-        // Initialize SpeechRecognizer
-        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this)
-        speechRecognizer.setRecognitionListener(object : RecognitionListener {
-
-            override fun onResults(results: Bundle) {
-                val matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                val spokenText = matches?.get(0) ?: ""
-                Log.d("Jak", "Heard: $spokenText")
-
-                // Delegate command execution to CommandManager
-                commandManager.execute(spokenText)
-
-                startBtn.text = "Start Listening"
-            }
-
-            override fun onError(error: Int) {
-                val message = when (error) {
-                    SpeechRecognizer.ERROR_AUDIO -> "Audio recording error"
-                    SpeechRecognizer.ERROR_CLIENT -> "Client error"
-                    SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Missing microphone permission"
-                    SpeechRecognizer.ERROR_NETWORK -> "Offline speech not available on this device"
-                    SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network timeout"
-                    SpeechRecognizer.ERROR_NO_MATCH -> "No speech recognized"
-                    SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Recognizer busy"
-                    SpeechRecognizer.ERROR_SERVER -> "Server error"
-                    SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "No speech input"
-                    else -> "Unknown error"
-                }
-
-                Log.e("Jak", message)
-                Toast.makeText(this@MainActivity, message, Toast.LENGTH_LONG).show()
-                statusText.text = message
-                startBtn.text = "Start Listening"
-            }
-
-            override fun onReadyForSpeech(params: Bundle?) {}
-            override fun onBeginningOfSpeech() {}
-            override fun onRmsChanged(rmsdB: Float) {}
-            override fun onBufferReceived(buffer: ByteArray?) {}
-            override fun onEndOfSpeech() {}
-            override fun onPartialResults(partialResults: Bundle?) {}
-            override fun onEvent(eventType: Int, params: Bundle?) {}
-        })
-
-        // Button click to start listening
         startBtn.setOnClickListener {
             if (hasAudioPermission()) {
-                startListening()
+                startVoiceService()
             } else {
                 requestAudioPermission()
             }
         }
     }
 
-    private fun startListening() {
-        startBtn.text = "Listening..."
+    private fun startVoiceService() {
+        val intent = Intent(this, VoiceService::class.java)
 
-        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(
-                RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
-            )
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US")
-            // TODO v2: Replace SpeechRecognizer with true offline ASR (Vosk / Picovoice)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intent)
+        } else {
+            startService(intent)
         }
 
-        try {
-            speechRecognizer.startListening(intent)
-        } catch (e: Exception) {
-            Toast.makeText(this, "Recognizer busy", Toast.LENGTH_SHORT).show()
-            startBtn.text = "Start Listening"
-        }
+        statusText.text = "Jak is listening"
+        startBtn.text = "Listening…"
+        startBtn.isEnabled = false
     }
 
     private fun hasAudioPermission(): Boolean {
@@ -141,16 +69,12 @@ class MainActivity : AppCompatActivity() {
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 100 && grantResults.isNotEmpty() &&
+
+        if (requestCode == 100 &&
+            grantResults.isNotEmpty() &&
             grantResults[0] == PackageManager.PERMISSION_GRANTED
         ) {
-            startListening()
+            startVoiceService()
         }
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        speechRecognizer.destroy()
-        tts.shutdown()
     }
 }
