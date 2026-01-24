@@ -1,9 +1,7 @@
-
-
 package com.mark.jak
 
 import android.Manifest
-import android.content.Intent
+import android.content.*
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -17,6 +15,16 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var startBtn: Button
     private lateinit var statusText: TextView
+
+    /* -------- SERVICE STATE RECEIVER -------- */
+
+    private val serviceStoppedReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            statusText.text = "Jak stopped"
+            startBtn.text = "Start Listening"
+            startBtn.isEnabled = true
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,6 +42,23 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /* -------- LIFECYCLE -------- */
+
+    override fun onStart() {
+        super.onStart()
+        registerReceiver(
+            serviceStoppedReceiver,
+            IntentFilter(VoiceService.ACTION_SERVICE_STOPPED)
+        )
+    }
+
+    override fun onStop() {
+        super.onStop()
+        unregisterReceiver(serviceStoppedReceiver)
+    }
+
+    /* -------- SERVICE CONTROL -------- */
+
     private fun startVoiceService() {
         val intent = Intent(this, VoiceService::class.java)
 
@@ -47,6 +72,8 @@ class MainActivity : AppCompatActivity() {
         startBtn.text = "Listening…"
         startBtn.isEnabled = false
     }
+
+    /* -------- PERMISSIONS -------- */
 
     private fun hasAudioPermission(): Boolean {
         return ContextCompat.checkSelfPermission(

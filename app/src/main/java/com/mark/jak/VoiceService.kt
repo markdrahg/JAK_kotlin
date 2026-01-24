@@ -185,6 +185,9 @@ class VoiceService : Service(), RecognitionListener {
         const val ACTION_STOP = "com.mark.jak.STOP"
         const val CHANNEL_ID = "voice_service_channel"
         const val NOTIFICATION_ID = 1
+
+        const val ACTION_SERVICE_STOPPED = "com.mark.jak.SERVICE_STOPPED"
+
     }
 
     private lateinit var speechRecognizer: SpeechRecognizer
@@ -333,11 +336,16 @@ class VoiceService : Service(), RecognitionListener {
     }
 
     private fun stopServiceFully() {
-        tts.speak("Goodbye",
-            TextToSpeech.QUEUE_FLUSH, null, null)
+        tts.speak("Goodbye", TextToSpeech.QUEUE_FLUSH, null, null)
+
+        sendBroadcast(
+            Intent(ACTION_SERVICE_STOPPED)
+        )
+
         stopForeground(true)
         stopSelf()
     }
+
 
     /* ---------------- SPEECH CALLBACKS ---------------- */
 
