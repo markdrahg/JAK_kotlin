@@ -34,5 +34,95 @@ Version 1 focuses on **core voice control**, **service lifecycle stability**, an
 
 ---
 
-## 🧱 Architecture
+## 🧱 Architecture (high level)
 
+Jak is structured around a long-running **foreground service** that manages the speech recognition lifecycle and routes recognized utterances into a command layer.
+
+Typical flow:
+
+1. **ForegroundService** starts and posts a persistent notification (required for reliability).
+2. The service creates and configures Android’s **`SpeechRecognizer`**.
+3. Recognition callbacks provide partial/final results.
+4. The recognized text is passed to **`CommandManager`**, which:
+   - matches text against known commands
+   - invokes the appropriate handler
+5. Jak speaks back via **`TextToSpeech`** to confirm what happened.
+6. After each command/result, the recognizer is restarted (when not paused) to keep listening.
+
+This separation keeps “Android lifecycle + microphone” concerns in the service layer, and keeps “what does this phrase do?” logic in the command layer.
+
+---
+
+## ✅ Getting started
+
+### Prerequisites
+
+- Android Studio (latest stable recommended)
+- JDK compatible with your Android Gradle Plugin (commonly JDK 17)
+- An Android device or emulator (note: mic/recognition behavior is typically better on a real device)
+
+### Build / install
+
+From the repo root:
+
+```bash
+./gradlew assembleDebug
+```
+
+To install to a connected device:
+
+```bash
+./gradlew installDebug
+```
+
+---
+
+## 🔐 Permissions & platform notes
+
+Because Jak listens for voice input in the background, it commonly requires:
+
+- `RECORD_AUDIO`
+- Foreground service + notification permissions/requirements depending on Android version
+
+Notes:
+
+- Android’s `SpeechRecognizer` quality/availability can vary by device and installed speech services.
+- “Offline-first” can still depend on the device’s speech recognition engine and language packs.
+- Continuous listening generally means carefully handling:
+  - service restarts
+  - audio focus
+  - recognizer errors/timeouts
+
+---
+
+## 📁 Project structure (typical)
+
+Most Android/Kotlin projects follow a layout like:
+
+- `app/src/main/java|kotlin/...` — app source
+- `app/src/main/res/...` — resources
+- `app/src/test/...` / `app/src/androidTest/...` — tests
+
+---
+
+## 🧭 Roadmap ideas
+
+- More commands + better intent matching (while staying offline)
+- Improved error recovery for `SpeechRecognizer`
+- Optional on-device NLP/intent engine
+- Configurable wake words / activation flow
+
+---
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Open a pull request
+
+---
+
+## License
+
+If you plan to open source this project, add a `LICENSE` file and update this section.
